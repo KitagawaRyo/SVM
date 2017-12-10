@@ -61,7 +61,6 @@ def get_param(x, y, alpha, kernel):
     svNumber = np.argmax(alpha)
     theta = np.sum([alpha[i] * y[i] * kernel(x[i], x[svNumber])
                     for i in range(0, len(x))]) - y[svNumber]
-    # theta = self.kernel.gaussian(x[25], w) - y[25]
     return w, theta
 
 
@@ -181,6 +180,7 @@ def main():
     yAxis = np.arange(0, 50.1, 0.1)
     XAxis, YAxis = np.meshgrid(xAxis, yAxis)
 
+    print(YAxis)
     ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
     ax.contour(XAxis, YAxis, ZAxis,
                colors=['b', 'k', 'r'], levels=[-10, 0, 10])
