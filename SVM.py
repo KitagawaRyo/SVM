@@ -16,17 +16,18 @@ class Kernel:
         self.b = b
 
     def __vector_size(self, x_k, x_l):
-        return (x_k[0] - x_l[0])**2 + (x_k[1] - x_l[1])**2
+        x = x_k - x_l
+        return np.sum(x**2)
 
     def inner_prod(self, x_k, x_l):
-        return x_k[0] * x_l[0] + x_k[1] * x_l[1]
+        return np.sum(np.multiply(x_k, x_l))
 
     def polynomial(self, x_k, x_l):
         a = 1 + self.inner_prod(x_k, x_l)
         return pow(a, self.d)
 
     def gaussian(self, x_k, x_l):
-        a = - self.__vector_size(x_k, x_l) / 2 / (self.sigma**2)
+        a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
         return np.exp(a)
 
     def sigmoid(self, x_k, x_l):
@@ -56,7 +57,7 @@ def get_alpha(x, y, kernel):
 
 def get_param(x, y, alpha, kernel):
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
-    w = co.matrix(x) * co.matrix(alphaY)
+    w = co.matrix(x).trans() * co.matrix(alphaY)
 
     svNumber = np.argmax(alpha)
     theta = np.sum([alpha[i] * y[i] * kernel(x[i], x[svNumber])
@@ -70,15 +71,17 @@ def get_sv_index(alpha):
 
 
 def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
+    """
+    識別器の実行内容
+    x, y, α, θ, カーネルからZ軸の値を出力する。
+    """
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
     # サポートベクターのインデックスを取得
     svNumber = get_sv_index(alpha)[1]
-    X = [[[i, l] for i in xAxis] for l in yAxis]
     ZAxis = [[0 for i in range(0, len(xAxis))] for l in range(0, len(yAxis))]
     for i in svNumber:
-        x_k = x[i]
-        data = [[kernel(x_i, x_k) for x_i in X_i] for X_i in X]
-        data = data * alphaY[i]
+        func = np.vectorize(lambda t1, t2: kernel(np.array([t1, t2]), x[i]))
+        data = func(xAxis, yAxis) * alphaY[i]
         ZAxis = np.add(ZAxis, data)
     ZAxis -= theta
     return ZAxis
@@ -141,7 +144,6 @@ def __set_args():
 
 def main():
     x, y = [], []
-    kernel = Kernel().inner_prod
     args = __set_args()
 
     # ファイルの読み込み
@@ -154,15 +156,22 @@ def main():
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
 
-    for i in range(0, R):
+    for i in range(R):
         sentence = linears[i].split()
-        x.append([float(sentence[0]), float(sentence[1])])
-        y.append(float(sentence[2]))
-        color = 'red' if sentence[2] == '1' else 'blue'
+        x_data = []
+        for l in range(len(sentence)-1):
+            x_data.append(float(sentence[l]))
+        x.append(x_data)
+        y.append(float(sentence[-1]))
+        color = 'red' if sentence[-1] == '1' else 'blue'
         ax.scatter(sentence[0], sentence[1], c=color)
+
+    x = np.array(x)
+    y = np.array(y)
 
     # コマンドライン引数からカーネルを設定
     # デフォルトはカーネル無し
+    kernel = Kernel().inner_prod # ただの内積
     if args.kernel == 0:
         kernel = Kernel(d=args.diameter).polynomial
     elif args.kernel == 1:
@@ -176,15 +185,15 @@ def main():
     print("重みw = [", w[0], ", ", w[1], "], 閾値θ = ", theta)
 
     # グラフのX軸とY軸を設定
-    xAxis = np.arange(0, 50.1, 0.1)
-    yAxis = np.arange(0, 50.1, 0.1)
-    XAxis, YAxis = np.meshgrid(xAxis, yAxis)
+    if len(x[0]) == 2:
+        xAxis = np.arange(0, 50.1, 0.1)
+        yAxis = np.arange(0, 50.1, 0.1)
+        XAxis, YAxis = np.meshgrid(xAxis, yAxis)
 
-    print(YAxis)
-    ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
-    ax.contour(XAxis, YAxis, ZAxis,
-               colors=['b', 'k', 'r'], levels=[-10, 0, 10])
-    plt.show()
+        ZAxis = classifier(x, y, alpha, theta, kernel, XAxis, YAxis)
+        ax.contour(XAxis, YAxis, ZAxis,
+                   colors=['b', 'k', 'r'], levels=[-10, 0, 10])
+        plt.show()
 
 
 if __name__ == "__main__":
