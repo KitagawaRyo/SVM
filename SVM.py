@@ -15,19 +15,21 @@ class Kernel:
         self.a = a
         self.b = b
 
-    def __vector_size(self, x_k, x_l):
-        x = x_k - x_l
-        return np.sum(x**2)
-
     def inner_prod(self, x_k, x_l):
-        return np.sum(np.multiply(x_k, x_l))
+        if x_k.ndim == 3 or x_l.ndim == 3: # 3次元配列が来たら崩さずに返す
+            return np.sum(np.multiply(x_k, x_l), axis=2)
+        else:
+            return np.sum(np.multiply(x_k, x_l))
 
     def polynomial(self, x_k, x_l):
         a = 1 + self.inner_prod(x_k, x_l)
         return pow(a, self.d)
 
     def gaussian(self, x_k, x_l):
-        a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
+        if x_k.ndim == 3 or x_l.ndim == 3: # 3次元配列が来たら崩さずに返す
+            a = - np.sum((x_k - x_l)**2, axis=2) / 2 / (self.sigma**2)
+        else:
+            a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
         return np.exp(a)
 
     def sigmoid(self, x_k, x_l):
@@ -78,10 +80,11 @@ def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
     # サポートベクターのインデックスを取得
     svNumber = get_sv_index(alpha)[1]
+    X = np.array([[[i, l] for i in xAxis] for l in yAxis])
     ZAxis = [[0 for i in range(0, len(xAxis))] for l in range(0, len(yAxis))]
     for i in svNumber:
-        func = np.vectorize(lambda t1, t2: kernel(np.array([t1, t2]), x[i]))
-        data = func(xAxis, yAxis) * alphaY[i]
+        sv = np.full((len(xAxis), len(yAxis), 2), x[i])
+        data = kernel(sv, X) * alphaY[i]
         ZAxis = np.add(ZAxis, data)
     ZAxis -= theta
     return ZAxis
@@ -190,7 +193,7 @@ def main():
         yAxis = np.arange(0, 50.1, 0.1)
         XAxis, YAxis = np.meshgrid(xAxis, yAxis)
 
-        ZAxis = classifier(x, y, alpha, theta, kernel, XAxis, YAxis)
+        ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
         ax.contour(XAxis, YAxis, ZAxis,
                    colors=['b', 'k', 'r'], levels=[-10, 0, 10])
         plt.show()
