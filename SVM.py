@@ -45,7 +45,10 @@ def __get_P(x, y, kernel):
 
 
 def get_alpha(x, y, kernel):
-    # http://cvxopt.org/userguide/coneprog.html#quadratic-cone-programs
+    """
+    cvxoptを使ってSVMの最適化問題を解く
+    http://cvxopt.org/userguide/coneprog.html#quadratic-cone-programs
+    """
     R = len(y)
     P = __get_P(x, y, kernel)
     q = co.matrix(-1., (R, 1))
@@ -58,6 +61,9 @@ def get_alpha(x, y, kernel):
 
 
 def get_param(x, y, alpha, kernel):
+    """
+    get_alphaで求めたαから、ωとθを求める。
+    """
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
     w = co.matrix(x).trans() * co.matrix(alphaY)
 
@@ -68,6 +74,9 @@ def get_param(x, y, alpha, kernel):
 
 
 def get_sv_index(alpha):
+    """
+    サポートベクターのindexを取得
+    """
     average = np.average(alpha) / 10
     return np.where(alpha > average)
 
@@ -78,6 +87,7 @@ def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
     x, y, α, θ, カーネルからZ軸の値を出力する。
     """
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
+
     # サポートベクターのインデックスを取得
     svNumber = get_sv_index(alpha)[1]
     X = np.array([[[i, l] for i in xAxis] for l in yAxis])
@@ -153,7 +163,7 @@ def main():
     f = open(args.file, 'r')
     linears = f.readlines()
     f.close()
-    R = len(linears)
+    R = len(linears) # テストデータの数
 
     # matplotlibの宣言
     fig = plt.figure()
@@ -169,8 +179,8 @@ def main():
         color = 'red' if sentence[-1] == '1' else 'blue'
         ax.scatter(sentence[0], sentence[1], c=color)
 
-    x = np.array(x)
-    y = np.array(y)
+    x = np.array(x) # テストの入力データ (D, R) D: 入力データの次元
+    y = np.array(y) # 教師データの答え (1, R)
 
     # コマンドライン引数からカーネルを設定
     # デフォルトはカーネル無し
@@ -189,10 +199,11 @@ def main():
 
     # グラフのX軸とY軸を設定
     if len(x[0]) == 2:
-        xAxis = np.arange(0, 50.1, 0.1)
-        yAxis = np.arange(0, 50.1, 0.1)
-        XAxis, YAxis = np.meshgrid(xAxis, yAxis)
+        xAxis = np.arange(0, 50.1, 0.1) # (501, 1) グラフのx軸
+        yAxis = np.arange(0, 50.1, 0.1) # (501, 1) グラフのy軸
+        XAxis, YAxis = np.meshgrid(xAxis, yAxis) # ともに(501, 501)の配列
 
+        # 識別器による計算
         ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
         ax.contour(XAxis, YAxis, ZAxis,
                    colors=['b', 'k', 'r'], levels=[-10, 0, 10])
