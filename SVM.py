@@ -76,7 +76,7 @@ def get_param(x, y, alpha, kernel):
     return w, theta
 
 
-def get_sv_index(alpha):
+def sv_index(alpha):
     """
     サポートベクターのindexを取得
     """
@@ -84,7 +84,7 @@ def get_sv_index(alpha):
     return np.where(alpha > average)
 
 
-def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
+def coordinate_trans(x, y, alpha, theta, kernel, xAxis, yAxis):
     """
     識別器の実行内容
     x, y, α, θ, カーネルからZ軸の値を出力する。
@@ -92,7 +92,7 @@ def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
     alphaY = np.multiply(alpha.trans(), co.matrix(y))
 
     # サポートベクターのインデックスを取得
-    svNumber = get_sv_index(alpha)[1]
+    svNumber = sv_index(alpha)[1]
     X = np.array([[[i, l] for i in xAxis] for l in yAxis])
     ZAxis = [[0 for i in range(0, len(xAxis))] for l in range(0, len(yAxis))]
     for i in svNumber:
@@ -101,6 +101,23 @@ def classifier(x, y, alpha, theta, kernel, xAxis, yAxis):
         ZAxis = np.add(ZAxis, data)
     ZAxis -= theta
     return ZAxis
+
+
+def classify(x, y, alpha, theta, kernel, target):
+    """
+    targetが識別器からどのクラスに識別されるかを返す。
+    """
+    alphaY = np.multiply(alpha.trans(), co.matrix(y))
+
+    # サポートベクターのインデックスを取得
+    svNumber = sv_index(alpha)[1]
+    y_class = 0
+    for i in svNumber:
+        sv = x[i]
+        data = kernel(sv, target) * alphaY[i]
+        y_class += data
+    y_class -= theta
+    return y_class
 
 
 def __set_args():
@@ -211,7 +228,7 @@ def main():
         XAxis, YAxis = np.meshgrid(xAxis, yAxis)  # ともに(501, 501)の配列
 
         # 識別器による計算
-        ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
+        ZAxis = coordinate_trans(x, y, alpha, theta, kernel, xAxis, yAxis)
         ax.contour(XAxis, YAxis, ZAxis,
                    colors=['b', 'k', 'r'], levels=[-10, 0, 10])
         plt.show()

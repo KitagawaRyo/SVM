@@ -56,6 +56,7 @@ def __set_args():
 
     return parser.parse_args()
 
+
 def main():
     x, y = [], []
     args = __set_args()
@@ -76,6 +77,23 @@ def main():
 
     x = np.array(x)  # テストの入力データ (D, R) D: 入力データの次元
     y = np.array(y)  # 教師データの答え (1, R)
+
+    # コマンドライン引数からカーネルを設定
+    # デフォルトはカーネル無し
+    kernel = svm.Kernel().inner_prod  # ただの内積
+    if args.kernel == 0:
+        kernel = svm.Kernel(d=args.diameter).polynomial
+    elif args.kernel == 1:
+        kernel = svm.Kernel(sigma=args.sigma).gaussian
+    elif args.kernel == 2:
+        kernel = svm.Kernel(a=args.a, b=args.b).sigmoid
+
+    alpha = svm.get_alpha(x, y, kernel)
+    if alpha is None:
+        print("aborted!")
+        return
+    w, theta = svm.get_param(x, y, alpha, kernel)
+
 
 if __name__ == "__main__":
     main()
