@@ -16,20 +16,24 @@ class Kernel:
         self.b = b
 
     def inner_prod(self, x_k, x_l):
-        if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
-            return np.sum(np.multiply(x_k, x_l), axis=2)
-        else:
-            return np.sum(np.multiply(x_k, x_l))
+        dim = max(x_k.ndim, x_l.ndim) - 1
+        return(np.sum(np.multiply(x_k, x_l), axis=dim))
+        # if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
+        #     return np.sum(np.multiply(x_k, x_l), axis=2)
+        # else:
+        #     return np.sum(np.multiply(x_k, x_l))
 
     def polynomial(self, x_k, x_l):
         a = 1 + self.inner_prod(x_k, x_l)
         return pow(a, self.d)
 
     def gaussian(self, x_k, x_l):
-        if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
-            a = - np.sum((x_k - x_l)**2, axis=2) / 2 / (self.sigma**2)
-        else:
-            a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
+        dim = max(x_k.ndim, x_l.ndim) - 1
+        a = - np.sum((x_k - x_l)**2, axis=dim) / 2 / (self.sigma**2)
+        # if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
+        #     a = - np.sum((x_k - x_l)**2, axis=2) / 2 / (self.sigma**2)
+        # else:
+        #     a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
         return np.exp(a)
 
     def sigmoid(self, x_k, x_l):
@@ -50,6 +54,7 @@ def get_alpha(x, y, kernel):
     http://cvxopt.org/userguide/coneprog.html#quadratic-cone-programs
     """
     try:
+        co.solvers.options['show_progress'] = False
         R = len(y)
         P = __get_P(x, y, kernel)
         q = co.matrix(-1., (R, 1))
@@ -117,7 +122,8 @@ def classify(x, y, alpha, theta, kernel, target):
         data = kernel(sv, target) * alphaY[i]
         y_class += data
     y_class -= theta
-    return y_class
+
+    return np.sign(y_class)
 
 
 def __set_args():

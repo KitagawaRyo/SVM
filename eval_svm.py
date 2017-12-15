@@ -2,6 +2,34 @@ import svm
 import argparse
 import numpy as np
 
+
+def eval_svm(x, y, kernel, n):
+    if len(x) < n:  # xの長さが短いときはNoneを返す
+        print("サンプルデータ数が分割数に対して少ないです。")
+        return
+    sep_x = np.array(np.split(x, n))
+    sep_y = np.array(np.split(y, n))
+    correct_num = 0
+    for i in range(n):
+        ind = np.ones(n, dtype=bool)
+        ind[i] = False
+        train_data = sep_x[ind].reshape(-1, 2)
+        train_ans = sep_y[ind].flatten()
+        eval_data = sep_x[i]
+        eval_ans = sep_y[i]
+
+        alpha = svm.get_alpha(train_data, train_ans, kernel)
+        if alpha is None:
+            print("aborted!")
+            return
+        w, theta = svm.get_param(train_data, train_ans, alpha, kernel)
+        predict_ans = svm.classify(train_data, train_ans, alpha,
+                                   theta, kernel, eval_data)
+        correct_num += len(np.where(eval_ans == predict_ans)[0])
+
+    return correct_num / len(x)
+
+
 def __set_args():
     parser = argparse.ArgumentParser(
             description='This script is to test SVM',
@@ -54,6 +82,13 @@ def __set_args():
             default=-1
             )
 
+    parser.add_argument(
+            '-n',
+            help="What divide data into, Default is 10",
+            type=int,
+            default=10
+            )
+
     return parser.parse_args()
 
 
@@ -88,11 +123,9 @@ def main():
     elif args.kernel == 2:
         kernel = svm.Kernel(a=args.a, b=args.b).sigmoid
 
-    alpha = svm.get_alpha(x, y, kernel)
-    if alpha is None:
-        print("aborted!")
-        return
-    w, theta = svm.get_param(x, y, alpha, kernel)
+    percent = eval_svm(x, y, kernel, args.n)
+    if percent is not None:
+        print("正答率は", percent, "です。")
 
 
 if __name__ == "__main__":
