@@ -9,14 +9,14 @@ class Kernel:
     カーネル用のクラスをここにまとめる。
     inner_prod()は普通の内積を扱う
     """
-    def __init__(self, d=2, sigma=10, a=3, b=10):
+    def __init__(self, d=2, sigma=10, a=2, b=-10):
         self.d = d
         self.sigma = sigma
         self.a = a
         self.b = b
 
     def inner_prod(self, x_k, x_l):
-        if x_k.ndim == 3 or x_l.ndim == 3: # 3次元配列が来たら崩さずに返す
+        if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
             return np.sum(np.multiply(x_k, x_l), axis=2)
         else:
             return np.sum(np.multiply(x_k, x_l))
@@ -26,14 +26,14 @@ class Kernel:
         return pow(a, self.d)
 
     def gaussian(self, x_k, x_l):
-        if x_k.ndim == 3 or x_l.ndim == 3: # 3次元配列が来たら崩さずに返す
+        if x_k.ndim == 3 or x_l.ndim == 3:  # 3次元配列が来たら崩さずに返す
             a = - np.sum((x_k - x_l)**2, axis=2) / 2 / (self.sigma**2)
         else:
             a = - np.sum((x_k - x_l)**2) / 2 / (self.sigma**2)
         return np.exp(a)
 
     def sigmoid(self, x_k, x_l):
-        s = self.a * self.inner_prod(x_k, x_l) + self.b
+        s = (self.a * self.inner_prod(x_k, x_l)) + self.b
         return np.tanh(s)
 
 
@@ -49,15 +49,18 @@ def get_alpha(x, y, kernel):
     cvxoptを使ってSVMの最適化問題を解く
     http://cvxopt.org/userguide/coneprog.html#quadratic-cone-programs
     """
-    R = len(y)
-    P = __get_P(x, y, kernel)
-    q = co.matrix(-1., (R, 1))
-    G = co.matrix(np.diag([-1. for i in range(0, R)]))
-    h = co.matrix(0., (R, 1))
-    A = co.matrix(y).trans()
-    b = co.matrix([0.])
-    sol = co.solvers.qp(P, q, G, h, A, b)
-    return sol['x'].trans()
+    try:
+        R = len(y)
+        P = __get_P(x, y, kernel)
+        q = co.matrix(-1., (R, 1))
+        G = co.matrix(np.diag([-1. for i in range(0, R)]))
+        h = co.matrix(0., (R, 1))
+        A = co.matrix(y).trans()
+        b = co.matrix([0.])
+        sol = co.solvers.qp(P, q, G, h, A, b)
+        return sol['x'].trans()
+    except ValueError:
+        pass
 
 
 def get_param(x, y, alpha, kernel):
@@ -142,14 +145,14 @@ def __set_args():
             '-a',
             help="sigmoid kernel's parameter1",
             type=int,
-            default=2
+            default=0.5
             )
 
     parser.add_argument(
             '-b',
             help="sigmoid kernel's parameter2",
             type=int,
-            default=5
+            default=-1
             )
 
     return parser.parse_args()
@@ -163,7 +166,7 @@ def main():
     f = open(args.file, 'r')
     linears = f.readlines()
     f.close()
-    R = len(linears) # テストデータの数
+    R = len(linears)  # テストデータの数
 
     # matplotlibの宣言
     fig = plt.figure()
@@ -179,12 +182,12 @@ def main():
         color = 'red' if sentence[-1] == '1' else 'blue'
         ax.scatter(sentence[0], sentence[1], c=color)
 
-    x = np.array(x) # テストの入力データ (D, R) D: 入力データの次元
-    y = np.array(y) # 教師データの答え (1, R)
+    x = np.array(x)  # テストの入力データ (D, R) D: 入力データの次元
+    y = np.array(y)  # 教師データの答え (1, R)
 
     # コマンドライン引数からカーネルを設定
     # デフォルトはカーネル無し
-    kernel = Kernel().inner_prod # ただの内積
+    kernel = Kernel().inner_prod  # ただの内積
     if args.kernel == 0:
         kernel = Kernel(d=args.diameter).polynomial
     elif args.kernel == 1:
@@ -194,14 +197,18 @@ def main():
 
     # サポートベクターマシンの二次計画問題を解く
     alpha = get_alpha(x, y, kernel)
+    if alpha is None:
+        print("aborted!")
+        return
     w, theta = get_param(x, y, alpha, kernel)
-    print("重みw = [", w[0], ", ", w[1], "], 閾値θ = ", theta)
+
+    print("重みw = ", w.trans(), "閾値θ = ", theta)
 
     # グラフのX軸とY軸を設定
     if len(x[0]) == 2:
-        xAxis = np.arange(0, 50.1, 0.1) # (501, 1) グラフのx軸
-        yAxis = np.arange(0, 50.1, 0.1) # (501, 1) グラフのy軸
-        XAxis, YAxis = np.meshgrid(xAxis, yAxis) # ともに(501, 501)の配列
+        xAxis = np.arange(0, 50.1, 0.1)  # (501, 1) グラフのx軸
+        yAxis = np.arange(0, 50.1, 0.1)  # (501, 1) グラフのy軸
+        XAxis, YAxis = np.meshgrid(xAxis, yAxis)  # ともに(501, 501)の配列
 
         # 識別器による計算
         ZAxis = classifier(x, y, alpha, theta, kernel, xAxis, yAxis)
